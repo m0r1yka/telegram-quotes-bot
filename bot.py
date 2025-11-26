@@ -3,14 +3,12 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
-# Завантажуємо змінні з .env (тільки локально)
+# Завантажуємо .env локально
 load_dotenv()
 
-# Читаємо конфіг із змінних середовища
 TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_ID = os.getenv("CHANNEL_ID")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
-
+ADMIN_ID = int(os.getenv("ADMIN_ID")) if os.getenv("ADMIN_ID") else None
 
 pending_quotes = {}
 
@@ -22,7 +20,6 @@ async def handle_quote(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not text:
         return
 
-    # Зберігаємо цитату за ID повідомлення (зручно і коротко)
     pending_quotes[update.message.message_id] = text
 
     keyboard = [
@@ -38,7 +35,6 @@ async def handle_quote(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=f"Нова цитата:\n\n{text}",
         reply_markup=reply_markup
     )
-    # Підтвердження для користувача
     await update.message.reply_text("✅ Цитату відправлено на модерацію.")
 
 async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -57,15 +53,15 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text="❌ Відхилено")
 
 def main():
-    # Перевіримо, чи є токен
-    if not TOKEN:
-        raise RuntimeError("BOT_TOKEN не заданий як змінна середовища.")
-    app = Application.builder().token(TOKEN).build()
+    if not TOKEN or not ADMIN_ID or not CHANNEL_ID:
+        raise RuntimeError("BOT_TOKEN, ADMIN_ID або CHANNEL_ID не задані як змінні середовища.")
 
+    app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_quote))
     app.add_handler(CallbackQueryHandler(button))
 
+    print("Bot started and polling ✅")
     app.run_polling()
 
 if __name__ == "__main__":
